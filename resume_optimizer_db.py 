@@ -1,0 +1,91 @@
+import sqlite3
+from datetime import datetime
+
+# === 1. Connect to the SQLite database ===
+conn = sqlite3.connect("ResumeOptimizerDB.sqlite")
+cursor = conn.cursor()
+
+# === 2. Insert sample data ===
+
+# Insert a user
+cursor.execute("""
+    INSERT INTO users (name, email)
+    VALUES (?, ?)
+""", ("Bhavi Akula", "bhavi@example.com"))
+
+user_id = cursor.lastrowid
+
+# Insert a resume
+cursor.execute("""
+    INSERT INTO resumes (user_id, resume_title, original_text, file_path)
+    VALUES (?, ?, ?, ?)
+""", (user_id, "Data Analyst Resume", "Original resume content goes here...", "resumes/bhavi_resume.pdf"))
+
+resume_id = cursor.lastrowid
+
+# Insert a job description
+cursor.execute("""
+    INSERT INTO job_descriptions (user_id, jd_title, raw_text, keywords_json)
+    VALUES (?, ?, ?, ?)
+""", (user_id, "Data Analyst - Google", "JD content here...", '{"SQL": 1, "Python": 1, "Power BI": 1}'))
+
+jd_id = cursor.lastrowid
+
+# Insert an optimized resume
+cursor.execute("""
+    INSERT INTO optimized_resumes (resume_id, jd_id, summary_text, optimized_text, ats_score, file_path)
+    VALUES (?, ?, ?, ?, ?, ?)
+""", (
+    resume_id,
+    jd_id,
+    "Tailored summary for Data Analyst at Google.",
+    "Optimized resume content...",
+    92.5,
+    "resumes/bhavi_optimized_resume.pdf"
+))
+
+optimized_id = cursor.lastrowid
+
+# Insert recommendations
+cursor.execute("""
+    INSERT INTO recommendations (optimized_id, missing_skills, suggested_certs, source_links)
+    VALUES (?, ?, ?, ?)
+""", (
+    optimized_id,
+    '["Looker", "R"]',
+    '["Google Data Analytics Certificate"]',
+    '["https://coursera.org/gda"]'
+))
+
+# Commit changes
+conn.commit()
+
+print("Sample data inserted successfully! 🎉")
+
+# === 3. Query optimized resumes with recommendations ===
+cursor.execute("""
+    SELECT
+        u.name,
+        r.resume_title,
+        orr.ats_score,
+        rec.missing_skills,
+        rec.suggested_certs
+    FROM optimized_resumes orr
+    JOIN resumes r ON orr.resume_id = r.resume_id
+    JOIN users u ON r.user_id = u.user_id
+    LEFT JOIN recommendations rec ON orr.optimized_id = rec.optimized_id
+""")
+
+results = cursor.fetchall()
+
+print("\n--- Optimized Resume Recommendations ---")
+for row in results:
+    print(f"Name: {row[0]}")
+    print(f"Resume: {row[1]}")
+    print(f"ATS Score: {row[2]}")
+    print(f"Missing Skills: {row[3]}")
+    print(f"Cert Recommendations: {row[4]}")
+    print("-" * 40)
+
+# === 4. Close the connection ===
+conn.close()
